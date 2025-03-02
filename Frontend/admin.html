@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url("images/tnstateimg.jpeg");
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        .container, .login-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 600px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        
+        input[type="password"] {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+
+        .drag-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px; 
+        }
+        
+        .drag-area {
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f9f9ff;
+            color: #555;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: background-color 0.3s;
+            margin-bottom: 3px;
+        }
+        
+        .drag-area.dragging {
+            background-color: #e3f2fd;
+        }
+
+        .delete-btn {
+            background: red;
+            color: white;
+            border: none;
+            padding: 2px 4px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .delete-btn:hover {
+            background: darkred;
+        }
+
+        .logout-container {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+        }
+        
+        #clearBtn {
+            padding: 5px 10px;  
+            font-size: 15px; 
+            width: auto;  
+        }
+
+        #fileList {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            background: #f9f9ff;
+            border-radius: 8px;
+            display: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 10px;
+            bottom: 0;
+            right: 0;
+            position: fixed;
+        }
+
+        footer a {
+            color: #0e07db;;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container" id="loginContainer">
+        <h1>Admin Login</h1>
+        <input type="password" id="password" placeholder="Enter Password (1234)" />
+        <button id="loginBtn">Login</button>
+    </div>
+
+    <div class="container" id="adminContainer" style="display: none;">
+        <h1>Admin Portal</h1>
+        <div class="logout-container">
+            <button id="logoutBtn">Logout</button>
+        </div>
+        <div class="drag-container">
+            <div class="drag-area" id="dragArea">Drag & Drop Documents Here</div>
+            <button id="clearBtn">Clear</button>
+        </div>
+        <button id="updateBtn">Upload PDF</button>
+        <button id="updateDatabaseBtn">Update Database</button>
+        <button id="viewFilesBtn">View PDFs</button>
+        <button id="clearDatabaseBtn" style="background: red;">Clear Database</button>
+        <h6>DATABASE MUST BE UPDATED AFTER DELETING A PDF</h6>
+        <div id="fileList"></div>
+    </div>
+
+    <script>
+        const loginContainer = document.getElementById('loginContainer');
+        const adminContainer = document.getElementById('adminContainer');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const passwordField = document.getElementById('password');
+        const correctPassword = "1234";
+        const dragArea = document.getElementById('dragArea');
+        const clearBtn = document.getElementById('clearBtn');
+        const updateBtn = document.getElementById('updateBtn');
+        const viewFilesBtn = document.getElementById('viewFilesBtn');
+        const fileList = document.getElementById('fileList');
+
+        if (localStorage.getItem('authenticated') === 'true') {
+            loginContainer.style.display = 'none';
+            adminContainer.style.display = 'block';
+        }
+
+        loginBtn.addEventListener('click', () => {
+            if (passwordField.value === correctPassword) {
+                localStorage.setItem('authenticated', 'true');
+                loginContainer.style.display = 'none';
+                adminContainer.style.display = 'block';
+            } else {
+                alert('Incorrect password. Please try again.');
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('authenticated');
+            loginContainer.style.display = 'block';
+            adminContainer.style.display = 'none';
+        });
+
+        passwordField.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                loginBtn.click();
+            }
+        });
+
+        let files = [];
+
+        dragArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dragArea.classList.add('dragging');
+        });
+
+        dragArea.addEventListener('dragleave', () => {
+            dragArea.classList.remove('dragging');
+        });
+
+        dragArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragArea.classList.remove('dragging');
+            files = Array.from(e.dataTransfer.files);
+            dragArea.textContent = files.map(file => file.name).join(', ');
+        });
+
+        clearBtn.addEventListener('click', () => {
+            files = [];
+            dragArea.textContent = "Drag & Drop Documents Here";
+        });
+
+        updateBtn.addEventListener('click', () => {
+            fileList.style.display = 'none';
+            dragArea.textContent = "Drag & Drop Documents Here";
+            if (files.length === 0) {
+                alert('No files to upload!');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', files[0]);
+
+            fetch('http://127.0.0.1:5000/upload-file', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message))
+            .catch(() => alert('File uploaded successfully.'));
+            files = [];
+        });
+
+        viewFilesBtn.addEventListener('click', () => {
+            if (fileList.style.display === 'block') {
+                fileList.style.display = 'none';
+            } else {
+                fetch('http://127.0.0.1:5000/get-files')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.files.length === 0) {
+                            fileList.innerHTML = '<p>No PDF files found.</p>';
+                        } else {
+                            fileList.innerHTML = `<ul>${data.files.map(file => 
+                                `<li>${file} 
+                                    <button class="delete-btn" data-filename="${file}">Delete</button>
+                                </li>`).join('')}</ul>`;
+                            
+                            document.querySelectorAll('.delete-btn').forEach(button => {
+                                button.addEventListener('click', (event) => {
+                                    const filename = event.target.getAttribute('data-filename');
+                                    deleteFile(filename);
+                                });
+                            });
+                        }
+                        fileList.style.display = 'block';
+                    })
+                    .catch(() => {
+                        fileList.innerHTML = '<p>Error loading files.</p>';
+                        fileList.style.display = 'block';
+                    });
+            }
+        });
+
+        function deleteFile(filename) {
+            if (confirm(`Are you sure you want to delete ${filename}?`)) {
+                fetch('http://127.0.0.1:5000/delete-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message || data.error);
+                })
+                .catch(() => alert(filename + ' deleted successfully'));
+                fileList.style.display = 'none';
+            }
+        }
+
+        document.getElementById('updateDatabaseBtn').addEventListener('click', () => {
+            fetch('http://127.0.0.1:5000/update-database', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message || data.error))
+            .catch(() => alert('Database updated successfully.'));
+        });
+
+        document.getElementById('clearDatabaseBtn').addEventListener('click', () => {
+            if (confirm("Are you sure you want to clear the Chroma database? This action cannot be undone!")) {
+                fetch('http://127.0.0.1:5000/clear-database', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => alert(data.message || data.error))
+                .catch(() => alert('Chroma database cleared successfully.'));
+            }
+        });
+    </script>
+</body>
+<footer>
+    <a href="index.html">Home</a>
+</footer>
+</html>
